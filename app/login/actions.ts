@@ -5,10 +5,31 @@ import {
   PASSWORD_REGEX,
   PASSWORD_REGEX_ERROR,
 } from "@/lib/constants";
+import db from "@/lib/db";
 import { z } from "zod";
+import bcrypt from "bcrypt";
+import { redirect } from "next/navigation";
+import getSession from "@/lib/session";
+
+const checkEmailExists = async (email: string) => {
+  const user = await db.user.findUnique({
+    where: {
+      email,
+    },
+    select: {
+      id: true,
+    },
+  });
+  return Boolean(user);
+};
 
 const formSchema = z.object({
-  email: z.string().email().toLowerCase(),
+  email: z
+    .string()
+    .email()
+    .toLowerCase()
+    // find a user with the email
+    .refine(checkEmailExists, "이 이메일을 사용하는 계정이 존재하지 않습니다."),
   password: z
     .string({
       required_error: "패스워드를 입력하세요.",
@@ -23,10 +44,37 @@ export async function handleForm(prevState: any, formData: FormData) {
     email: formData.get("email"),
     password: formData.get("password"),
   };
-  const result = formSchema.safeParse(data);
+  const result = await formSchema.spa(data); // safeParseAsync()
   if (!result.success) {
     return result.error.flatten();
   } else {
-    console.log(result.data);
+    // if the user is found, checl password hash
+    const user = await db.user.findUnique({
+      where: {
+        email: result.data.email,
+      },
+      select: {
+        id: true,
+        password: true,
+      },
+    });
+    const ok = await bcrypt.compare(
+      result.data.password,
+      user!.password ?? "xxx"
+    );
+    // log the user in
+    if (ok) {
+      const session = await getSession();
+      session.id = user!.id;
+      // redirect "/profile"
+      redirect("/profile");
+    } else {
+      return {
+        fieldErrors: {
+          email: [],
+          password: ["잘못된 비밀번호입니다."],
+        },
+      };
+    }
   }
 }

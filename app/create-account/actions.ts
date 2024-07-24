@@ -8,9 +8,8 @@ import db from "@/lib/db";
 // zod는 백엔드 validation 라이브러리
 import { z } from "zod";
 import bcrypt from "bcrypt";
-import { getIronSession } from "iron-session";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import getSession from "@/lib/session";
 
 // At least one uppercase letter, one lowercase letter, one number and one special character
 
@@ -113,13 +112,10 @@ export async function createAccount(prevState: any, formData: FormData) {
       },
     });
     // log the user in
-    const cookie = await getIronSession(cookies(), {
-      cookieName: "delicious-carrot",
-      password: process.env.COOKIE_PASSWORD!,
-    });
+    const session = await getSession();
     //@ts-ignore
-    cookie.id = user.id;
-    await cookie.save();
+    session.id = user.id;
+    await session.save();
     // redirect "/profile"
     redirect("/profile");
   }
