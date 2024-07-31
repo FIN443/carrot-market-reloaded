@@ -10,6 +10,7 @@ import { z } from "zod";
 import bcrypt from "bcrypt";
 import { redirect } from "next/navigation";
 import getSession from "@/lib/session";
+import logIn from "@/lib/login";
 
 // At least one uppercase letter, one lowercase letter, one number and one special character
 
@@ -146,12 +147,6 @@ export async function createAccount(prevState: any, formData: FormData) {
         id: true,
       },
     });
-    // log the user in
-    const session = await getSession();
-    //@ts-ignore
-    session.id = user.id;
-    await session.save();
-    // redirect "/profile"
-    redirect("/profile");
+    await logIn(user.id);
   }
 }
